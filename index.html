@@ -1,0 +1,10 @@
+<script>
+Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIzOTJjOGQxNC1hZjBjLTQ3YzgtYWEyZS1mYWJkZWVmNTM1NTgiLCJpZCI6Mzc1NDE2LCJpYXQiOjE3Njc3NzUwNjh9.jSPe5j-cDkgMNN6S6ISczX7dYZBw6mCvSvBBNPv2J5w";
+const viewer = new Cesium.Viewer("cesiumContainer", {
+  skyBox:false, skyAtmosphere:false
+});
+const tileset = viewer.scene.primitives.add(
+  new Cesium.Cesium3DTileset.fromIonAssetId(4328199)
+);
+tileset.readyPromise.then(() => viewer.zoomTo(tileset));
+</script>
