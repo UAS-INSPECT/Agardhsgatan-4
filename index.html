@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <title>3D Modell – Cesium</title>
+
+  <!-- Cesium -->
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+
+  <style>
+    html, body, #cesiumContainer {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="cesiumContainer"></div>
+
+  <script>
+    // Din Cesium access token
+    Cesium.Ion.defaultAccessToken = "DIN_CESIUM_TOKEN_HÄR";
+
+    // Skapa Cesium viewer med ljus bakgrund
+    const viewer = new Cesium.Viewer("cesiumContainer", {
+      timeline: false,
+      animation: false,
+      baseLayerPicker: false,
+      sceneModePicker: true,
+      navigationHelpButton: true,
+      infoBox: true,
+      scene3DOnly: true,
+      skyBox: false,
+      skyAtmosphere: false,
+      backgroundColor: Cesium.Color.LIGHTGRAY
+    });
+
+    // Lägg till 3D-modell från Cesium Ion
+    const assetId = DITT_ASSETID; // byt till ditt croppade 3D Tiles asset
+    const tileset = new Cesium.Cesium3DTileset.fromIonAssetId(assetId);
+    viewer.scene.primitives.add(tileset);
+
+    // Vänta tills tileset är klart innan kameran flyttas
+    tileset.readyPromise.then(() => {
+      viewer.zoomTo(tileset);
+
+      // Sätt bounding sphere som Home-position
+      viewer.homeButton.viewModel.command.beforeExecute.addEventListener(function(e) {
+        e.cancel = true; // stoppa default
+        viewer.zoomTo(tileset);
+      });
+    }).otherwise((error) => {
+      console.error("Fel vid laddning av tileset:", error);
+    });
+  </script>
+</body>
+</html>
