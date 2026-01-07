@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <title>3D Modell – Cesium</title>
+
+  <!-- Cesium -->
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+
+  <!-- Cesium Navigation -->
+  <link href="https://unpkg.com/cesium-navigation-es/dist/Navigation.css" rel="stylesheet">
+  <script src="https://unpkg.com/cesium-navigation-es/dist/Navigation.js"></script>
+
+  <!-- Cesium Measure -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/CesiumGS/cesium-measure@latest/dist/cesium-measure.css">
+  <script src="https://cdn.jsdelivr.net/gh/CesiumGS/cesium-measure@latest/dist/cesium-measure.js"></script>
+
+  <style>
+    html, body, #cesiumContainer { width:100%; height:100%; margin:0; padding:0; }
+  </style>
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+
+  <script>
+    // Din Cesium token
+    Cesium.Ion.defaultAccessToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIzOTJjOGQxNC1hZjBjLTQ3YzgtYWEyZS1mYWJkZWVmNTM1NTgiLCJpZCI6Mzc1NDE2LCJpYXQiOjE3Njc3NzUwNjh9.jSPe5j-cDkgMNN6S6ISczX7dYZBw6mCvSvBBNPv2J5w;
+
+    // Skapa Cesium viewer med ljus bakgrund
+    const viewer = new Cesium.Viewer("cesiumContainer", {
+      timeline: false,
+      animation: false,
+      baseLayerPicker: false,
+      sceneModePicker: true,
+      navigationHelpButton: true,
+      infoBox: true,
+      scene3DOnly: true,
+      skyBox: false,
+      skyAtmosphere: false,
+      backgroundColor: Cesium.Color.LIGHTGRAY
+    });
+
+    // Lägg till 3D-modell från Cesium Ion
+    const assetId = 4328199; // byt till ditt croppade assetId
+    const tileset = new Cesium.Cesium3DTileset.fromIonAssetId(assetId);
+    viewer.scene.primitives.add(tileset);
+
+    // Vänta tills tileset är klart innan navigation och measure
+    tileset.readyPromise.then(() => {
+      console.log("Tileset laddat!");
+
+      // Zooma till modellen
+      viewer.zoomTo(tileset);
+
+      // Navigation-widget
+      const navigation = new CesiumNavigation(viewer, {
+        enableTranslate: true,
+        enableZoomControls: true,
+        enableCompass: true
+      });
+
+      // Mätverktyg
+      const measure = new Cesium.Measure(viewer);
+      // Om du vill kan du aktivera direkt:
+      // measure.showDistance();
+      // measure.showArea();
+      // measure.showAngle();
+    }).otherwise((error) => {
+      console.error("Fel vid laddning av tileset:", error);
+    });
+  </script>
+</body>
+</html>
