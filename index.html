@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <title>3D Modell – Inspektion</title>
+
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+
+  <style>
+    html, body, #cesiumContainer {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #f2f2f2; /* ljus neutral bakgrund */
+    }
+
+    /* Flytta Cesiums standard-knappar till botten */
+    .cesium-viewer-toolbar {
+      top: auto !important;
+      bottom: 15px !important;
+      left: 50% !important;
+      transform: translateX(-50%);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="cesiumContainer"></div>
+
+  <script>
+    /* ===============================
+       1. CESIUM TOKEN
+    =============================== */
+    Cesium.Ion.defaultAccessToken =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIzOTJjOGQxNC1hZjBjLTQ3YzgtYWEyZS1mYWJkZWVmNTM1NTgiLCJpZCI6Mzc1NDE2LCJpYXQiOjE3Njc3NzUwNjh9.jSPe5j-cDkgMNN6S6ISczX7dYZBw6mCvSvBBNPv2J5w";
+
+    /* ===============================
+       2. SKAPA VIEWER
+    =============================== */
+    const viewer = new Cesium.Viewer("cesiumContainer", {
+      timeline: false,
+      animation: false,
+      baseLayerPicker: false,
+      geocoder: false,
+
+      navigationHelpButton: true, // kompass + mus-hjälp
+      homeButton: true,
+      sceneModePicker: true,
+
+      skyBox: false,              // ingen rymd
+      skyAtmosphere: false,       // ingen blå himmel
+      terrainProvider: undefined, // stabilare för 3D Tiles
+    });
+
+    /* Neutral bakgrund istället för blå glob */
+    viewer.scene.backgroundColor = Cesium.Color.fromCssColorString("#f2f2f2");
+
+    /* ===============================
+       3. LÄGG TILL DIN MODELL
+    =============================== */
+    const assetId = 4328199;
+
+    Cesium.Cesium3DTileset.fromIonAssetId(assetId)
+      .then(tileset => {
+        viewer.scene.primitives.add(tileset);
+
+        // Vänta tills modellen är laddad
+        tileset.readyPromise.then(() => {
+          const bs = tileset.boundingSphere;
+
+          // Zooma snyggt mot modellen
+          viewer.camera.viewBoundingSphere(
+            bs,
+            new Cesium.HeadingPitchRange(
+              0,
+              -0.35,
+              bs.radius * 1.6
+            )
+          );
+
+          viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
+
+          // Home-knappen = tillbaka till modellen
+          viewer.homeButton.viewModel.command.beforeExecute.addEventListener(e => {
+            e.cancel = true;
+            viewer.camera.viewBoundingSphere(
+              bs,
+              new Cesium.HeadingPitchRange(0, -0.35, bs.radius * 1.6)
+            );
+            viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
+          });
+        });
+      })
+      .otherwise(error => {
+        console.error("Kunde inte ladda modellen:", error);
+      });
+  </script>
+</body>
+</html>
