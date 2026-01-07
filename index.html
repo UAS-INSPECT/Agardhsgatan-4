@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <title>3D Modell – Cesium</title>
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <style>
+    html, body, #cesiumContainer { width:100%; height:100%; margin:0; padding:0; }
+    /* Toolbar längst ner i mitten (för senare mätverktyg) */
+    .cesium-viewer .cesium-viewer-toolbar {
+      bottom: 10px !important;
+      top: auto !important;
+      left: 50% !important;
+      transform: translateX(-50%);
+    }
+  </style>
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+
+  <script>
+    // Din Cesium access token
+    Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIzOTJjOGQxNC1hZjBjLTQ3YzgtYWEyZS1mYWJkZWVmNTM1NTgiLCJpZCI6Mzc1NDE2LCJpYXQiOjE3Njc3NzUwNjh9.jSPe5j-cDkgMNN6S6ISczX7dYZBw6mCvSvBBNPv2J5w";
+
+    // Skapa Cesium viewer med navigationskompass
+    const viewer = new Cesium.Viewer("cesiumContainer", {
+      timeline: false,
+      animation: false,
+      baseLayerPicker: false,
+      sceneModePicker: true,
+      navigationHelpButton: true,  // visar kompassen
+      homeButton: true,
+      infoBox: true,
+      selectionIndicator: true,
+      skyBox: false,
+      skyAtmosphere: false,
+      imageryProvider: false       // ingen glob, vit bakgrund
+    });
+
+    // Sätt vit bakgrund
+    viewer.scene.backgroundColor = Cesium.Color.WHITE;
+    viewer.scene.globe.show = false; // stänger av globen helt
+
+    // Din 3D-modell
+    const assetId = 4328199; // byt till din assetId
+    Cesium.Cesium3DTileset.fromIonAssetId(assetId)
+      .then(tileset => {
+        viewer.scene.primitives.add(tileset);
+
+        // Vänta tills tileset är redo
+        tileset.readyPromise.then(() => {
+          const boundingSphere = tileset.boundingSphere;
+
+          // Zooma ut och titta ner mot modellen
+          viewer.camera.viewBoundingSphere(boundingSphere, new Cesium.HeadingPitchRange(0, -0.3, boundingSphere.radius * 1.5));
+
+          // Home-knapp centrerad på modellen
+          viewer.homeButton.viewModel.command.beforeExecute.addEventListener(function(e){
+            e.cancel = true;
+            viewer.camera.viewBoundingSphere(boundingSphere, new Cesium.HeadingPitchRange(0, -0.3, boundingSphere.radius * 1.5));
+          });
+        });
+      })
+      .otherwise(error => console.error("Fel vid laddning av tileset:", error));
+  </script>
+</body>
+</html>
