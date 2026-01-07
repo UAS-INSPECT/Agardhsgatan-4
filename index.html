@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <title>3D Modell – Cesium</title>
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <style>
+    html, body, #cesiumContainer { width:100%; height:100%; margin:0; padding:0; }
+    .toolbar {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.6);
+      padding: 5px 10px;
+      border-radius: 5px;
+      z-index: 10;
+    }
+    .toolbar button {
+      margin: 0 5px;
+      padding: 5px 10px;
+      color: white;
+      background-color: #0077cc;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .toolbar button:hover {
+      background-color: #005fa3;
+    }
+    .info {
+      position: absolute;
+      top:10px;
+      left:10px;
+      background: rgba(0,0,0,0.7);
+      color:white;
+      padding:10px;
+      font-family:sans-serif;
+      max-width:300px;
+      overflow-y:auto;
+      max-height:400px;
+      z-index: 10;
+    }
+    .info img { width: 150px; margin:3px; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+
+  <!-- Toolbar för mätverktyg -->
+  <div class="toolbar">
+    <button id="distanceBtn">Avstånd</button>
+    <button id="areaBtn">Area</button>
+    <button id="angleBtn">Lutning</button>
+  </div>
+
+  <!-- Inspektionsbilder -->
+  <div class="info" id="inspektionsbilder">
+    <b>Inspektionsbilder:</b><br>
+  </div>
+
+  <script>
+    // Din Cesium access token
+    Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIzOTJjOGQxNC1hZjBjLTQ3YzgtYWEyZS1mYWJkZWVmNTM1NTgiLCJpZCI6Mzc1NDE2LCJpYXQiOjE3Njc3NzUwNjh9.jSPe5j-cDkgMNN6S6ISczX7dYZBw6mCvSvBBNPv2J5w";
+
+    // Skapa Cesium viewer
+    const viewer = new Cesium.Viewer("cesiumContainer", {
+      timeline: false,
+      animation: false,
+      baseLayerPicker: false,
+      sceneModePicker: true,
+      navigationHelpButton: true,
+      homeButton: true,
+      infoBox: true,
+      selectionIndicator: true,
+      skyBox: false,
+      skyAtmosphere: false,
+      imageryProvider: false,
+      backgroundColor: Cesium.Color.LIGHTGRAY
+    });
+
+    // Lägg till 3D-modell från Cesium ion
+    const assetId = 4328199;
+    let tileset;
+    Cesium.Cesium3DTileset.fromIonAssetId(assetId)
+      .then(ts => {
+        tileset = ts;
+        viewer.scene.primitives.add(tileset);
+
+        // Centrerad och zoomad vy
+        const bs = tileset.boundingSphere;
+        viewer.camera.viewBoundingSphere(bs, new Cesium.HeadingPitchRange(0, -0.3, bs.radius * 2));
+        viewer.homeButton.viewModel.command.beforeExecute.addEventListener(e => {
+          e.cancel = true;
+          viewer.camera.viewBoundingSphere(bs, new Cesium.HeadingPitchRange(0, -0.3, bs.radius * 2));
+        });
+
+        // Rotera runt modellens mittpunkt
+        viewer.scene.preRender.addEventListener(() => {
+          viewer.camera.rotate(Cesium.Cartesian3.UNIT_Z, 0.001);
+        });
+      });
+
+    // ======================
+    // Mätverktyg på modellen
+    // ======================
+    let activeHandler = null;
+
+    function clearHandler() {
+      if(activeHandler) {
+        activeHandler.destroy();
+        activeHandler = null;
+      }
+    }
+
+    function pickOnModel(position) {
+      if(!tileset) return null;
+      const picked = viewer.scene.pick(position);
+      if(picked && picked.primitive === tileset) {
+        return viewer.scene.pickPosition(position);
+      }
+      return null;
+    }
+
+    function startDistance() {
+      clearHandler();
+      let points = [];
+      activeHandler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
+      activeHandler.setInputAction(e => {
+        const c = pickOnModel(e.position);
+        if(!c) return;
+        points.push(c);
+        if(points.length === 2) {
+          const d = Cesium.Cartesian3.distance(points[0], points[1]);
+          alert("Avstånd: " + d.toFixed(2) + " m");
+          clearHandler();
+        }
+      }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    }
+
+    function startArea() {
+      clearHandler();
+      let points = [];
+      activeHandler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
+      activeHandler.setInputAction(e => {
+        const c = pickOnModel(e.position);
+        if(!c) return;
+        points.push(c);
+        if(points.length >= 3) {
+          let area = 0;
+          for(let i=1;i<points.length-1;i++){
+            const a = Cesium.Cartesian3.distance(points[0], points[i]);
+            const b = Cesium.Cartesian3.distance(points[i], points[i+1]);
+            const c = Cesium.Cartesian3.distance(points[i+1], points[0]);
+            const s = (a+b+c)/2;
+            area += Math.sqrt(s*(s-a)*(s-b)*(s-c));
+          }
+          alert("Area: " + area.toFixed(2) + " m²");
+          clearHandler();
+        }
+      }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    }
+
+    function startAngle() {
+      clearHandler();
+      let points = [];
+      activeHandler = new Cesium.ScreenSpaceEventHandler(viewer.canvas);
+      activeHandler.setInputAction(e => {
+        const c = pickOnModel(e.position);
+        if(!c) return;
+        points.push(c);
+        if(points.length === 3) {
+          const v1 = Cesium.Cartesian3.subtract(points[1], points[0], new Cesium.Cartesian3());
+          const v2 = Cesium.Cartesian3.subtract(points[2], points[0], new Cesium.Cartesian3());
+          const angle = Cesium.Cartesian3.angleBetween(v1, v2) * 180/Math.PI;
+          alert("Vinkel: " + angle.toFixed(2) + "°");
+          clearHandler();
+        }
+      }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    }
+
+    document.getElementById("distanceBtn").onclick = startDistance;
+    document.getElementById("areaBtn").onclick = startArea;
+    document.getElementById("angleBtn").onclick = startAngle;
+
+    // ======================
+    // Inspektionsbilder
+    // ======================
+    const container = document.getElementById('inspektionsbilder');
+    const antalBilder = 87;
+    for(let i=1;i<=antalBilder;i++){
+      const link = document.createElement('a');
+      link.href = `images/inspektion${i}.jpg`;
+      link.onclick = e => { e.preventDefault(); openLightbox(`images/inspektion${i}.jpg`); };
+      const img = document.createElement('img');
+      img.src = `images/inspektion${i}.jpg`;
+      link.appendChild(img);
+      container.appendChild(link);
+    }
+
+    function openLightbox(src){
+      let overlay = document.createElement('div');
+      overlay.style.position = 'fixed';
+      overlay.style.top = 0;
+      overlay.style.left = 0;
+      overlay.style.width = '100%';
+      overlay.style.height = '100%';
+      overlay.style.backgroundColor = 'rgba(0,0,0,0.8)';
+      overlay.style.display = 'flex';
+      overlay.style.alignItems = 'center';
+      overlay.style.justifyContent = 'center';
+      overlay.style.zIndex = 999;
+      let img = document.createElement('img');
+      img.src = src;
+      img.style.maxWidth = '90%';
+      img.style.maxHeight = '90%';
+      overlay.appendChild(img);
+      overlay.onclick = () => document.body.removeChild(overlay);
+      document.body.appendChild(overlay);
+    }
+
+  </script>
+</body>
+</html>
